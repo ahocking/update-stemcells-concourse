@@ -20,7 +20,7 @@ image_resource:
   source: {repository: czero/cflinuxfs2}
 
 inputs:
-  - name: pipeline-source
+  - name: stemcell-pipeline
   - name: stemcells
 
 params:
@@ -29,4 +29,4 @@ params:
   OPSMAN_URI:
 
 run:
-  path: pipeline-source/tasks/upload-stemcells/task.sh
+  path: stemcell-pipeline/tasks/upload-stemcells/task.sh

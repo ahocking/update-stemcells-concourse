@@ -16,52 +16,116 @@ resource_types:
 
 
 resources:
-- name: stemcell-v3421
+- name: r-stemcell-v3421
   type: pivnet
   source:
     api_token: {{pivnet_token}}
     product_slug: stemcells
     product_version: 3421\..*
 
-- name: pipeline-source
+- name: r-stemcell-v1079-windows
+  type: pivnet
+  source:
+    api_token: {{pivnet_token}}
+    product_slug: stemcells-windows-server
+    product_version: 1079\..*
+
+- name: stemcell-pipeline
   type: git
   source:
-    uri: git@github.com:ahocking/update-stemcells-concourse.git
+    uri: {{stemcell_pipeline_git_uri}}
     branch: master
-    private_key: {{pipeline_git_private_key}}
+    private_key: {{git_private_key}}
 
+- name: pcf-pipelines
+  type: git
+  source:
+    uri: {{pcf_pipelines_git_uri}}
+    branch: master
+    private_key: {{git_private_key}}
+
+- name: schedule
+  type: time
+  source:
+    days:
+    - Sunday
+    - Monday
+    - Tuesday
+    - Wednesday
+    - Thursday
+    - Friday
+    - Saturday
+    interval: 30m
+    location: America/Los_Angeles
+    start: 12:00 AM
+    stop: 11:59 PM
 
 jobs:
-- name: upload-latest-3421-stemcell
+- name: regulator
   plan:
-  - get: stemcells
-    resource: stemcell-v3421
+  - get: schedule
+    trigger: true
+
+  - get: pcf-pipelines
+  - get: stemcell-pipeline
+
+  - get: stemcell-v3421
+    resource: r-stemcell-v3421
     params:
       globs:
       - {{iaas_type_glob}}
-  - get: pipeline-source
-  - task: check-stemcell
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: czero/cflinuxfs2
-      inputs:
-      - name: stemcell
-      run:
-        path: bash
-        args:
-        - -c
-        - |
-          set -eu
 
-          sc_file_path=$(find stemcell/ -name *.tgz)
+  - get: stemcell-v1079-windows
+    resource: r-stemcell-v1079-windows
+    params:
+      globs:
+      - {{iaas_type_glob}}
 
-          echo $sc_file_path
+- name: upload-latest-stemcells
+  plan:
+  - get: pcf-pipelines
+    passed:
+    - regulator
+    trigger: true
+  - get: stemcell-v3421
+    resource: r-stemcell-v3421
+    params:
+      globs:
+      - {{iaas_type_glob}}
 
-  - task: upload-stemcells
-    file: pipeline-source/tasks/upload-stemcells/task.yml
+  - get: stemcell-v1079-windows
+    resource: r-stemcell-v1079-windows
+    params:
+      globs:
+      - {{iaas_type_glob}}
+
+  - task: wait-opsman-clear
+    file: pcf-pipelines/tasks/wait-opsman-clear/task.yml
+    params:
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+      OPSMAN_URI: {{opsman_uri}}
+      OPSMAN_USERNAME: {{opsman_admin_username}}
+
+  - task: upload-stemcell-v3421
+    file: stemcell-pipeline/tasks/upload-stemcells/task.yml
+    input_mapping:
+      stemcells: stemcell-v3421
+    params:
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+      OPSMAN_URI: {{opsman_uri}}
+      OPSMAN_USERNAME: {{opsman_admin_username}}
+
+  - task: upload-stemcell-v1079-windows
+    file: stemcell-pipeline/tasks/upload-stemcells/task.yml
+    input_mapping:
+      stemcells: stemcell-v1079-windows
+    params:
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+      OPSMAN_URI: {{opsman_uri}}
+      OPSMAN_USERNAME: {{opsman_admin_username}}
+
+  - task: apply-changes
+    file: pcf-pipelines/tasks/apply-changes/task.yml
     params:
       OPSMAN_PASSWORD: {{opsman_admin_password}}
       OPSMAN_URI: {{opsman_uri}}
