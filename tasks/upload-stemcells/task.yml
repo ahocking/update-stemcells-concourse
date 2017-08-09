@@ -29,4 +29,4 @@ params:
   OPSMAN_URI:
 
 run:
-  path: pcf-pipelines/tasks/upload-stemcells/task.sh
+  path: pipeline-source/tasks/upload-stemcells/task.sh

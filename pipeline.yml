@@ -4,12 +4,8 @@ resource_types:
   source:
     repository: pivotalcf/pivnet-resource
     tag: latest-final
-- name: pipeline-source
-  type: git
-  source:
-    uri: git@github.com:ahocking/update-stemcells-concourse.git
-    branch: master
-    private_key: {{pipeline_git_private_key}}
+
+
 # 3421
 # 3312
 # 3263
@@ -27,6 +23,13 @@ resources:
     product_slug: stemcells
     product_version: 3421\..*
 
+- name: pipeline-source
+  type: git
+  source:
+    uri: git@github.com:ahocking/update-stemcells-concourse.git
+    branch: master
+    private_key: {{pipeline_git_private_key}}
+
 
 jobs:
 - name: upload-latest-3421-stemcell
@@ -35,7 +38,8 @@ jobs:
     resource: stemcell-v3421
     params:
       globs:
-      - "*vsphere*"
+      - {{iaas_type_glob}}
+  - get: pipeline-source
   - task: check-stemcell
     config:
       platform: linux
@@ -57,7 +61,7 @@ jobs:
           echo $sc_file_path
 
   - task: upload-stemcells
-    file: pcf-pipelines/tasks/upload-stemcells/task.yml
+    file: pipeline-source/tasks/upload-stemcells/task.yml
     params:
       OPSMAN_PASSWORD: {{opsman_admin_password}}
       OPSMAN_URI: {{opsman_uri}}
