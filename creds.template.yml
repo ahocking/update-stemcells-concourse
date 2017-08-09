@@ -1,0 +1,8 @@
+pivnet_token:
+opsman_domain:
+opsman_username:
+opsman_password:
+pipeline_git_private_key: |
+  -----BEGIN RSA PRIVATE KEY-----
+  ...
+  -----END RSA PRIVATE KEY-----

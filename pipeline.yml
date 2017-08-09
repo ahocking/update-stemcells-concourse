@@ -1,0 +1,64 @@
+resource_types:
+- name: pivnet
+  type: docker-image
+  source:
+    repository: pivotalcf/pivnet-resource
+    tag: latest-final
+- name: pipeline-source
+  type: git
+  source:
+    uri: git@github.com:ahocking/update-stemcells-concourse.git
+    branch: master
+    private_key: {{pipeline_git_private_key}}
+# 3421
+# 3312
+# 3263
+# 3262
+# 3363
+# 1079 - windows
+#
+
+
+resources:
+- name: stemcell-v3421
+  type: pivnet
+  source:
+    api_token: {{pivnet_token}}
+    product_slug: stemcells
+    product_version: 3421\..*
+
+
+jobs:
+- name: upload-latest-3421-stemcell
+  plan:
+  - get: stemcells
+    resource: stemcell-v3421
+    params:
+      globs:
+      - "*vsphere*"
+  - task: check-stemcell
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: czero/cflinuxfs2
+      inputs:
+      - name: stemcell
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+
+          sc_file_path=$(find stemcell/ -name *.tgz)
+
+          echo $sc_file_path
+
+  - task: upload-stemcells
+    file: pcf-pipelines/tasks/upload-stemcells/task.yml
+    params:
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+      OPSMAN_URI: {{opsman_uri}}
+      OPSMAN_USERNAME: {{opsman_admin_username}}
