@@ -27,7 +27,7 @@ resources:
   type: pivnet
   source:
     api_token: {{pivnet_token}}
-    product_slug: stemcells-windows-server
+    product_slug: stemcells-windows-server-schwab
     product_version: 1079\..*
 
 - name: stemcell-pipeline
@@ -35,14 +35,18 @@ resources:
   source:
     uri: {{stemcell_pipeline_git_uri}}
     branch: master
-    private_key: {{git_private_key}}
+    username: {{git_username}}
+    password: {{git_password}}
+#    private_key: {{git_private_key}}
 
 - name: pcf-pipelines
   type: git
   source:
     uri: {{pcf_pipelines_git_uri}}
     branch: master
-    private_key: {{git_private_key}}
+    username: {{git_username}}
+    password: {{git_password}}
+#    private_key: {{git_private_key}}
 
 - name: schedule
   type: time
@@ -87,6 +91,7 @@ jobs:
     passed:
     - regulator
     trigger: true
+  - get: stemcell-pipeline
   - get: stemcell-v3421
     resource: r-stemcell-v3421
     params:
